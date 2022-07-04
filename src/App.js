@@ -1,116 +1,119 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import "./App.scss"
 
-const accurateInterval = function (fn, time) {
-        var cancel, nextAt, timeout, wrapper;
-        nextAt = new Date().getTime() + time;
-        timeout = null;
-        wrapper = function () {
-          nextAt += time;
-          timeout = setTimeout(wrapper, nextAt - new Date().getTime());
-          return fn();
-        };
-        cancel = function () {
-          return clearTimeout(timeout);
-        };
-        timeout = setTimeout(wrapper, nextAt - new Date().getTime());
-        return {
-          cancel: cancel
-        };
-};
-const audioBeep = document.getElementById("beep");
+
 
 function App() {
      const [brkLength, setBrkLength] = useState(5)
      const [seshLength, setSeshLength] = useState(25)
      const [timerState, setTimerState] = useState("stopped")
-     const [statetimerType, setTimerType] = useState("Session")
+     const [timerType, setTimerType] = useState("Session")
      const [timer, setTimer] = useState(1500)
-     const [intervalID, setIntervalID] = useState("")
      const [alarmColor, setAlarmColor] = useState({ color: "black" })
      const [pausePlay, setpausePlay] = useState(true)
      const [heatbeatClass, setHeatbeatClass] = useState("")
 
      const handleBrkLength = (sign) => {
-          handleLengthControl(
-               "setBrkLength",
-               sign,
-               brkLength,
-               "Session"
-          )
+        if (timerState === "running") return {}
+                if (sign==="+"){
+                        brkLength<60  && setBrkLength(brkLength + 1)
+                }
+                else if (sign==="-" ){
+                        brkLength > 1 && setBrkLength(brkLength - 1)
+                }
+     }
+     
+     const handleSeshLength = (sign) => {
+        if (timerState === "running") return {}
+                if (sign==="+"){
+                        seshLength<60  && setSeshLength(seshLength + 1) 
+                        seshLength<60  && setTimer(timer + 60)
+                }
+                else if (sign==="-" ){
+                        seshLength > 1 && setSeshLength(seshLength - 1) 
+                        seshLength > 1 && setTimer(timer - 60)
+                }
      }
 
-        const handleSeshLength = (sign) => {
-                handleLengthControl(
-                "setSeshLength",
-                sign,
-                seshLength,
-                "Break"
-                );
-        }
      
-     const handleLengthControl = (stateToChange,sign,  currentLength,timerType ) => {
-
-          if (timerState === "running") return
-        //   if (statetimerType === timerType) {
-               if (sign === "-" && currentLength !== 1 ) {
-                        stateToChange==="setBrkLength"?
-                                setBrkLength(currentLength - 1)
-                        :
-                                setSeshLength(currentLength - 1) // more ifs
-               } 
-               else if (sign === "+" && currentLength !== 60) {
-                        stateToChange==="setBrkLength"?
-                                setBrkLength(currentLength + 1)
-                        :
-                                setSeshLength(currentLength + 1) // more ifs
-               } 
-               else if (sign === "-" && currentLength !== 1) {
-                         stateToChange==="setBrkLength"?
-                                setBrkLength(currentLength - 1)
-                        :
-                                setSeshLength(currentLength - 1) // more ifs
-
-                        setTimer(currentLength * 60 - 60)
-               } 
-               else if (sign === "+" && currentLength !== 60) {
-                        stateToChange==="setBrkLength"?
-                                setBrkLength(currentLength + 1)
-                        :
-                                setSeshLength(currentLength + 1) // more ifs
-                    setTimer(currentLength * 60 + 60)
-               }
-        //   }
+        const clockify=()=> {
+                let minutes = Math.floor(timer / 60);
+                let seconds = timer - minutes * 60;
+                seconds = seconds < 10 ? '0' + seconds : seconds;
+                minutes = minutes < 10 ? '0' + minutes : minutes;
+                return minutes + ':' + seconds;
         }
+
+        const timeout = setTimeout(() => {
+                if(timer && timerState==="running"){
+                  setTimer(timer - 1)
+                }
+                warning(timer)
+                buzzer(timer)
+                
+        }, 1000);
+
         
-        const beginCountDown=()=> {
-                setIntervalID(accurateInterval(() => {
-                        decrementTimer();
-                        phaseControl();
-                }, 1000))
-        }
-        const decrementTimer=()=> {
-                setTimer(timer - 1)
-        }
-        console.log(timer)
+        const handleTimerControl = () => {
+                setpausePlay(btn=>!btn)
+                clearTimeout(timeout)
 
-        const phaseControl=()=> {
-                let timeint = timer;
-                warning(timeint);
-                buzzer(timeint);
-                if (timeint < 0) {
-                  if (intervalID) {
-                    intervalID.cancel();
-                  }
-                  if (statetimerType === 'Session') {
-                    beginCountDown();
-                //     switchTimer(brkLength * 60, 'Break');
-                  } else {
-                    beginCountDown();
-                //     switchTimer(seshLength * 60, 'Session');
-                  }
+                pausePlay ?
+                        setHeatbeatClass("clock-heartbeat")
+                :
+                        setHeatbeatClass("")
+                
+                timerState === 'stopped' ?
+                        setTimerState( 'running' )
+                :
+                        setTimerState('stopped' );
+        }
+
+        const reset=()=> {
+                const audioBeep = document.getElementById("beep");
+
+                setpausePlay(true)
+                setHeatbeatClass("")
+                setBrkLength(5)
+                setSeshLength(25)
+                setTimerState('stopped')
+                setTimerType('Session')
+                setTimer(1500)
+                setAlarmColor({ color: 'black' })
+               
+                audioBeep.pause();
+                audioBeep.currentTime = 0;
+        }
+
+        const resetTimer = () => {
+                const audioBeep = document.getElementById("beep");
+
+
+                if(!timer && timerType === "Session"){
+                        setTimer(brkLength * 60)
+                        setTimerType("Break")
+                }
+                if(!timer && timerType === "Break"){
+                        setTimer(seshLength * 60)
+                        setTimerType("Session")
+                        audioBeep.pause()
+                        audioBeep.currentTime = 0;
                 }
         }
+
+        const clock = () => {
+                if(timerState==="running"){
+                        console.log(timeout)
+                        resetTimer()
+                }else {
+                        clearTimeout(timeout)
+                }
+              }
+        
+        
+        
+
+        
 
         const warning=(_timer)=> {
                 if (_timer < 61) {
@@ -121,64 +124,21 @@ function App() {
               }
 
         const  buzzer=(_timer)=> {
+                const audioBeep = document.getElementById("beep");
                         if (_timer === 0) {
-                        audioBeep.play();
+                                audioBeep.play();
                         }
         }
         
-        const   switchTimer=(num, str)=> {
-                setTimer(num)
-                setTimerType(str)
-                setAlarmColor( { color: 'white' })
-        }
+        
 
-        const clockify=()=> {
-                let minutes = Math.floor(timer / 60);
-                let seconds = timer - minutes * 60;
-                seconds = seconds < 10 ? '0' + seconds : seconds;
-                minutes = minutes < 10 ? '0' + minutes : minutes;
-                return minutes + ':' + seconds;
-        }
-        const reset=()=> {
-                setpausePlay(true)
-                setHeatbeatClass("")
-                setBrkLength(5)
-                setSeshLength(25)
-                setTimerState('stopped')
-                setTimerType('Session')
-                setTimer(1500)
-                setIntervalID("")
-                setAlarmColor({ color: 'white' })
-               
-                if ( intervalID) {
-                  intervalID.cancel();
-                }
-                audioBeep.pause();
-                audioBeep.currentTime = 0;
-        }
+        
+       useEffect(() => {
+                clock()
+        }, [timerState, timer, timeout])
+       
 
-          const handleTimerControl = () => {
-                setpausePlay(btn=>!btn)
-
-                if(pausePlay){
-                        setHeatbeatClass("clock-heartbeat")
-                }
-                else{
-                        setHeatbeatClass("")
-                }
-                
-
-                if (timerState === 'stopped') {
-                        beginCountDown();
-                        setTimerState( 'running' );
-                }
-                else {
-                        setTimerState('stopped' );
-                        if (intervalID) {
-                          intervalID.cancel();
-                        }
-                      }
-          }
+        
         
      return (
           <div className='App'>
@@ -260,8 +220,8 @@ function App() {
                     </div>
                     <div className='timerbox'>
                          <div>
-                              <h2 id='timer-label'>{statetimerType}</h2>
-                              <p id='time-left' className= {`${heatbeatClass}  ${alarmColor}`}>
+                              <h2 id='timer-label'>{timerType}</h2>
+                              <p id='time-left' className= {`${heatbeatClass}`} style={alarmColor}>
                                    {clockify()}
                               </p>
                               <audio
@@ -276,7 +236,7 @@ function App() {
                               {pausePlay ? (
                                    <svg
                                         id='start_stop'
-                                        onClick={handleTimerControl}
+                                        onClick={()=>handleTimerControl()}
                                         width='24'
                                         height='24'
                                         xmlns='http://www.w3.org/2000/svg'
@@ -288,7 +248,7 @@ function App() {
                               ) : (
                                    <svg
                                         id='start_stop'
-                                        onClick={handleTimerControl}
+                                        onClick={()=>handleTimerControl()}
                                         xmlns='http://www.w3.org/2000/svg'
                                         width='24'
                                         height='24'
@@ -299,7 +259,7 @@ function App() {
                               )}
                               <svg
                                    id='reset'
-                                   onClick={reset}
+                                   onClick={()=>reset()}
                                    xmlns='http://www.w3.org/2000/svg'
                                    width='24'
                                    height='24'
